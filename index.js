@@ -372,7 +372,7 @@ HttpAdvancedAccessory.prototype = {
 			return [lockService];
 			break;
 		case "Smoke":
-			this.smokeService = new Service.MotionSensor(this.name);
+			this.smokeService = new Service.SmokeSensor(this.name);
 			this.switchHandling=="realtime";
 	
 			this.smokeService
