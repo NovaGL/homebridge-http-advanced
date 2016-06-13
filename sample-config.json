@@ -24,6 +24,12 @@
 		"password" : "",
 		"sendimmediately": "","
 									    
-       } 
+       } ,
+       {
+        "accessory": "Http",
+        "name": "Temperature Sensor",
+        "temp_url": "http://localhost/data.cgi",
+	"service": "Temperature"		
+      }
     ]
 }
