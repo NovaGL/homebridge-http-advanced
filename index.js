@@ -5,7 +5,7 @@ var pollingtoevent = require('polling-to-event');
 module.exports = function(homebridge){
 	Service = homebridge.hap.Service;
 	Characteristic = homebridge.hap.Characteristic;
-	homebridge.registerAccessory("homebridge-http-advanced", "Http-advanced", HttpAdvancedAccessory);
+	homebridge.registerAccessory("homebridge-http-advanced", "Http", HttpAdvancedAccessory);
 }
 
 
@@ -22,6 +22,7 @@ function HttpAdvancedAccessory(log, config) {
 	this.unlock_url             = config["unlock_url"]  			|| this.lock_url;
 	this.unlock_body            = config["unlock_body"] 			|| this.lock_body;
 	this.status_url             = config["status_url"];
+	this.temp_url               = config["temp_url"];
 	this.brightness_url         = config["brightness_url"];
 	this.brightnesslvl_url      = config["brightnesslvl_url"];
 	this.http_method            = config["http_method"] 	  	 	|| "GET";
@@ -230,6 +231,29 @@ HttpAdvancedAccessory.prototype = {
 		}.bind(this));
 	},
 
+	getTemperature: function(callback) {
+		if (!this.temp_url) {
+			this.log.warn("Ignoring request; No Temperature level url defined.");
+			callback(new Error("No Temperature level url defined."));
+			return;
+		}		
+		var url = this.temp_url;
+		this.log("Getting Temperature");
+
+		this.httpRequest(url, "", "GET", this.username, this.password, this.sendimmediately, function(error, response, responseBody) {
+			if (error) {
+				this.log('HTTP get Temperature function failed: %s', error.message);
+				callback(error);
+			} else {	
+				var re = /tdC=(\d*)/g ;
+				var result = re.exec(responseBody);	
+				var level = parseInt(result[1]);				
+				this.log("Temperature is currently %s", level);
+				callback(null, level);
+			}
+		}.bind(this));
+	},
+
 
 	getBrightness: function(callback) {
 		if (!this.brightnesslvl_url) {
@@ -389,6 +413,17 @@ HttpAdvancedAccessory.prototype = {
 	
 			return [this.motionService];
 			break;
+
+		case "Temperature": 
+				this.tempService = new Service.TemperatureSensor(this.name);
+				
+				this.tempService
+				.getCharacteristic(Characteristic.CurrentTemperature)
+				.on('get', this.getTemperature.bind(this));			
+		
+				return [this.tempService];
+				break;
 	}
+
   }
 };
