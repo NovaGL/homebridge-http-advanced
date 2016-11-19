@@ -32,6 +32,9 @@ function HttpAdvancedAccessory(log, config) {
 	this.sendimmediately        = config["sendimmediately"] 	 	|| "";
 	this.service                = config["service"] 	  	 	 	|| "Switch";
 	this.name                   = config["name"];
+	this.manufacturer           = config["manufacturer"] 	 	|| "HTTP Manufacturer";
+	this.model                  = config["model"] 	 	      || "HTTP Model";
+	this.serial_number					= config["serial_number"] 				|| "HTTP Serial Number";
 	this.brightnessHandling     = config["brightnessHandling"] 	 	|| "no";
 	this.switchHandling 	    = config["switchHandling"] 		 	|| "no";
 
@@ -291,9 +294,9 @@ HttpAdvancedAccessory.prototype = {
     var informationService = new Service.AccessoryInformation();
 
     informationService
-    .setCharacteristic(Characteristic.Manufacturer, "HTTP Manufacturer")
-    .setCharacteristic(Characteristic.Model, "HTTP Model")
-    .setCharacteristic(Characteristic.SerialNumber, "HTTP Serial Number");
+    .setCharacteristic(Characteristic.Manufacturer, this.manufacturer)
+    .setCharacteristic(Characteristic.Model, this.model)
+    .setCharacteristic(Characteristic.SerialNumber, this.serial_number);
 
 	switch (this.service) {
 		case "Switch": 
