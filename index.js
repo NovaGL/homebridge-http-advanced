@@ -37,6 +37,13 @@ function HttpAdvancedAccessory(log, config) {
 	this.serial_number					= config["serial_number"] 				|| "HTTP Serial Number";
 	this.brightnessHandling     = config["brightnessHandling"] 	 	|| "no";
 	this.switchHandling 	    = config["switchHandling"] 		 	|| "no";
+	this.close_url 				= config["close_url"];
+	this.close_body 			= config["close_body"];
+	this.open_url 				= config["open_url"] || this.close_url;
+	this.open_body 				= config["open_body"] || this.close_body;
+	this.http_close_method      = config["http_close_method"] 	 	|| this.http_method;
+	this.door_open_timer 		= config["door_open_timer"] || 20;
+	this.door_sensor_present 	= config["door_sensor_present"] || false;
 
 	this.state = false;
 	
@@ -86,6 +93,13 @@ function HttpAdvancedAccessory(log, config) {
 					that.motionService.getCharacteristic(Characteristic.MotionDetected)
 					.setValue(that.state);
 				}		
+			break;
+			case "GarageDoorOpener":
+				if (that.garageDoorService) {
+					that.state = binaryState;
+					that.garageDoorService.getCharacteristic(Characteristic.CurrentDoorState)
+						.setValue(that.state);
+				}
 			break;
 			}        
     });
@@ -283,6 +297,169 @@ HttpAdvancedAccessory.prototype = {
 		}.bind(this));
 	},
 
+	getTargetDoorState: function(callback) {
+		var targetDoorState = this.garageDoorService.getCharacteristic(Characteristic.TargetDoorState).value;
+		callback(null, targetDoorState);
+	},
+
+	setTargetDoorState: function(state, callback) {
+		var value = state | 0;
+		callback = callback || function() { };
+
+		this.homekitTriggered = true;
+
+		var currentDoorState = this.garageDoorService.getCharacteristic(Characteristic.CurrentDoorState);
+
+		if (this.isMoving !== true && value == Characteristic.TargetDoorState.CLOSED && currentDoorState.value == Characteristic.CurrentDoorState.CLOSED) {
+			this.log("Door already closed");
+			callback(null);
+			return;
+		}
+
+		if (!this.open_url || !this.close_url) {
+			this.log.warn("Ignoring request; No Door url defined.");
+			callback(new Error("No Door url defined."));
+			return;
+		}
+
+		var url;
+		var body;
+
+		if (value == Characteristic.TargetDoorState.CLOSED) {
+			url = this.close_url;
+			body = this.close_body;
+			this.log("Closing Garage Door");
+		} else if (value == Characteristic.TargetDoorState.OPEN) {
+			url = this.open_url;
+			body = this.open_body;
+			this.log("Opening Garage Door");
+		}
+
+		this.httpRequest(url, body, this.http_close_method, this.username, this.password, this.sendimmediately, function(error, response, body) {
+			if (error) {
+				this.log('HTTP Garage Door function failed: %s', error);
+				callback(error);
+			} else {
+				this.log('HTTP Garage Door function succeeded!');
+
+				this.setDoorMoving(value, true);
+
+				callback(null);
+			}
+		}.bind(this));
+	},
+
+	getCurrentDoorState: function(callback) {
+		if (!this.status_url) {
+			this.log.warn("Ignoring request; No status url defined.");
+			callback(new Error("No status url defined."));
+			return;
+		}
+
+		var service = this.garageDoorService;
+		var url = this.status_url;
+		this.log("Getting current door state");
+
+		this.httpRequest(url, "", "GET", this.username, this.password, this.sendimmediately, function(error, response, responseBody) {
+			if (error) {
+				this.log('HTTP get current door state function failed: %s', error.message);
+				callback(error);
+			} else {
+				var status = parseInt(responseBody);
+				this.log(this.service, "current door state is currently", status);
+				callback(null, status);
+			}
+		}.bind(this));
+	},
+
+	setCurrentDoorState: function(value, callback) {
+		var state;
+
+		switch (value) {
+			case Characteristic.CurrentDoorState.OPEN:
+				state = "Open";
+				break;
+			case Characteristic.CurrentDoorState.CLOSED:
+				state = "Closed";
+				break;
+			case Characteristic.CurrentDoorState.OPENING:
+				state = "Opening";
+				break;
+			case Characteristic.CurrentDoorState.CLOSING:
+				state = "Closing";
+				break;
+			case Characteristic.CurrentDoorState.STOPPED:
+				state = "Stopped";
+				break;
+		}
+
+		this.garageDoorService
+			.getCharacteristic(Characteristic.TargetDoorState)
+			.updateValue(value);
+
+		if (callback) callback();
+	},
+
+	setDoorMoving: function(targetDoorState, homekitTriggered) {
+		var service = this.garageDoorService;
+
+		if (this.movingTimer) {
+			clearTimeout(this.movingTimer);
+			delete this.movingTimer;
+		}
+
+		if (this.isMoving === true) {
+			delete this.isMoving;
+			this.setCurrentDoorState(Characteristic.CurrentDoorState.STOPPED);
+
+			// Toggle TargetDoorState after receiving a stop
+			setTimeout(
+				function(obj, state) {
+					obj.updateValue(state);
+				},
+				500,
+				service.getCharacteristic(Characteristic.TargetDoorState),
+				targetDoorState == Characteristic.TargetDoorState.OPEN ? Characteristic.TargetDoorState.CLOSED : Characteristic.TargetDoorState.OPEN
+			);
+			return;
+		}
+
+		this.isMoving = true;
+
+		if (homekitTriggered === true) {
+			var currentDoorState = service.getCharacteristic(Characteristic.CurrentDoorState);
+
+			if (targetDoorState == Characteristic.TargetDoorState.CLOSED) {
+				if (currentDoorState.value != Characteristic.CurrentDoorState.CLOSED) {
+					this.setCurrentDoorState(Characteristic.CurrentDoorState.CLOSING);
+				}
+			}
+			else if (targetDoorState == Characteristic.TargetDoorState.OPEN) {
+				if ((this.door_sensor_present !== true && currentDoorState.value != Characteristic.CurrentDoorState.OPEN) || currentDoorState.value == Characteristic.CurrentDoorState.STOPPED) {
+					this.setCurrentDoorState(Characteristic.CurrentDoorState.OPENING);
+				}
+			}
+		}
+
+		this.movingTimer = setTimeout(function(self) {
+			delete self.movingTimer;
+			delete self.isMoving;
+
+			var targetDoorState = self.garageDoorService.getCharacteristic(Characteristic.TargetDoorState);
+
+			if (self.door_sensor_present !== true) {
+				self.setCurrentDoorState(targetDoorState.value ? Characteristic.CurrentDoorState.CLOSED : Characteristic.CurrentDoorState.OPEN);
+				return;
+			}
+
+			self.getCurrentDoorState(function(err, status) {
+				if (!err) {
+					self.setCurrentDoorState(status ? Characteristic.CurrentDoorState.CLOSED : Characteristic.CurrentDoorState.OPEN);
+				}
+			});
+		}, this.door_open_timer * 1000, this);
+	},
+
   identify: function(callback) {
     this.log("Identify requested!");
     callback(); // success
@@ -392,6 +569,21 @@ HttpAdvancedAccessory.prototype = {
 	
 			return [this.motionService];
 			break;
-	}
+
+		case "GarageDoorOpener":
+			this.garageDoorService = new Service.GarageDoorOpener(this.name);
+
+			this.garageDoorService
+				.getCharacteristic(Characteristic.CurrentDoorState)
+				.on('get', this.getCurrentDoorState.bind(this))
+				.on('set', this.setCurrentDoorState.bind(this));
+
+			this.garageDoorService
+				.getCharacteristic(Characteristic.TargetDoorState)
+				.on('get', this.getTargetDoorState.bind(this))
+				.on('set', this.setTargetDoorState.bind(this));
+
+			return [informationService, this.garageDoorService];
+		}
   }
 };
