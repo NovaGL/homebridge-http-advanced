@@ -222,7 +222,7 @@ HttpAdvancedAccessory.prototype = {
             body = this.unlock_body;
       		this.log("Unlocking Door");
 	    }
-		this.httpRequest(url, body, this.http_method, this.username, this.password, this.sendimmediately, function(error, response, responseBody) {
+		this.httpRequest(url, body, this.http_lock_method, this.username, this.password, this.sendimmediately, function(error, response, responseBody) {
 			if (error) {
 				this.log('HTTP Door function failed: %s', error.message);
 				callback(error);
