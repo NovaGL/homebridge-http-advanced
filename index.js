@@ -120,13 +120,18 @@ function HttpAdvancedAccessory(log, config) {
     	}, {longpolling:true,interval:2000,longpollEventName:"levelpoll"});
 
 		levelemitter.on("levelpoll", function(data) {  
-			that.currentlevel = parseInt(data);
-
+			that.currentlevel = JSON.parse(data).lightlevel;
+			that.log(that.service, "raw data: " + data);
 			if (that.lightbulbService) {				
 				that.log(that.service, "received data:"+that.brightnesslvl_url, "level is currently", that.currentlevel); 		        
 				that.lightbulbService.getCharacteristic(Characteristic.Brightness)
 				.setValue(that.currentlevel);
-			}        
+			}
+			if (that.lightLevelService) {				
+				that.log(that.service, "received data:"+that.brightnesslvl_url, "level is currently", that.currentlevel); 		        
+				that.lightLevelService.getCharacteristic(Characteristic.CurrentAmbientLightLevel)
+				.setValue(that.currentlevel);
+			}         
     	});
 	}
 }
@@ -569,6 +574,17 @@ HttpAdvancedAccessory.prototype = {
 	
 			return [this.motionService];
 			break;
+
+
+                case "Lux":
+                        this.lightLevelService = new Service.LightSensor(this.name);
+                        this.brightnessHandling=="realtime";
+                        this.lightLevelService
+                        .getCharacteristic(Characteristic.CurrentAmbientLightLevel)
+                        .on('get', function(callback) {callback(null, that.currentlevel)});
+
+                        return [this.lightLevelService];
+                        break;
 
 		case "GarageDoorOpener":
 			this.garageDoorService = new Service.GarageDoorOpener(this.name);

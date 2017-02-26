@@ -10,19 +10,25 @@
     "node": ">=0.12.0",
     "homebridge": ">=0.2.0"
   },
-  "author": {
-    "name": "NovaGL"
-  },
-  "contributors":[
-  { "name" : "Adrian Rudman"},
-  { "name" : "David Parry"}
-  ], 
+  "author": "NovaGL",
+  "contributors": [
+    "Adrian Rudman",
+    "David Parry"
+  ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/NovaGL/homebridge-http-advanced"
+    "url": "git://github.com/NovaGL/homebridge-http-advanced.git"
   },
   "dependencies": {
     "request": "^2.65.0",
-	"polling-to-event": ">=2.0.2"
+    "polling-to-event": ">=2.0.2"
+  },
+  "bugs": {
+    "url": "https://github.com/NovaGL/homebridge-http-advanced/issues"
+  },
+  "homepage": "https://github.com/NovaGL/homebridge-http-advanced#readme",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
