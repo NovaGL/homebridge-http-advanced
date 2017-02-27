@@ -51,7 +51,7 @@ function HttpAdvancedAccessory(log, config) {
     	var that = this;
 
 	// Status Polling
-	if ((this.status_url && this.switchHandling =="realtime") || (this.service=="Smoke" || this.service=="Motion")) {
+	if ((this.status_url && this.switchHandling =="realtime") || (this.service=="Occupancy") || (this.service=="Smoke" || this.service=="Motion")) {
 		var powerurl = this.status_url;
 		var statusemitter = pollingtoevent(function(done) {
 	        	that.httpRequest(powerurl, "", "GET", that.username, that.password, that.sendimmediately, function(error, response, body) {
@@ -94,6 +94,12 @@ function HttpAdvancedAccessory(log, config) {
 					.setValue(that.state);
 				}		
 			break;
+            case "Occupancy":
+                if (that.motionService) {
+                    that.motionService.getCharacteristic(Characteristic.OccupancyDetected)
+                    .setValue(that.state);
+                }       
+            break;
 			case "GarageDoorOpener":
 				if (that.garageDoorService) {
 					that.state = binaryState;
@@ -574,7 +580,15 @@ HttpAdvancedAccessory.prototype = {
 	
 			return [this.motionService];
 			break;
-
+        case "Occupancy":
+            this.motionService = new Service.OccupancySensor(this.name);
+            this.switchHandling=="realtime";                
+            this.motionService
+            .getCharacteristic(Characteristic.OccupancyDetected)
+            .on('get', function(callback) {callback(null, that.state)});
+    
+            return [this.motionService];
+            break;
 
                 case "Lux":
                         this.lightLevelService = new Service.LightSensor(this.name);
