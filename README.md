@@ -45,3 +45,6 @@ Service|URL Type|Data format|Description
 -------|--------|-----------|------------
 Lux|brightnesslvl_url|JSON: { "lightlevel": 94.00 }|Ambient light sensor
 Occupancy|status_url|Integer: 1 or 0|Occupancy Sensor
+Motion|status_url|Integer: 1 or 0|Motion Sensor
+Light|status_url|Integer: 1 or 0|Switch status for the light
+Light|brightnesslvl_url| Integer: 0 to 100|Current brightness percentage for the light
