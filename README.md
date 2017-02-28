@@ -10,7 +10,7 @@ Supports https devices on the HomeBridge Platform and provides a real time polli
 
 # Configuration
 
-The configuration for this plugin is the same as [homebridge-http](https://github.com/rudders/homebridge-http) but includes an additional method to read the power state of the device and the brightness level. Specify the `status_url` in your config.json that returns the status of the device as an integer (0 = off, 1 = on). Specify the `brightnesslvl_url` to return the current brighness level as an integer.
+The configuration for this plugin is the same as [homebridge-http](https://github.com/rudders/homebridge-http) but includes an additional method to read the power state of the device and the brightness level. Specify the `status_url` in your config.json that returns the status of the device as an integer (0 = off, 1 = on). Specify the `brightnesslvl_url` to return the current brighness level as an integer. 
 
 Switch handling and brightness handling support 3 methods, yes for polling on app load, realtime for constant polling or no polling
 
@@ -35,3 +35,13 @@ Configuration sample:
 		"password" : ""					    
        } 
     ]
+```
+
+# Services
+
+Each service shows up as a specific HomeKit device.
+
+Service|URL Type|Data format|Description
+-------|--------|-----------|------------
+Lux|brightnesslvl_url|JSON: { "lightlevel": 94.00 }|Ambient light sensor
+Occupancy|status_url|Integer: 1 or 0|Occupancy Sensor
